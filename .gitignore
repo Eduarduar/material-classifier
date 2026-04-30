@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+credentials/
+model/*.keras
+media_temp/
+*.sqlite3
+.venv/
+dist/
+*.egg-info/
+images/*
