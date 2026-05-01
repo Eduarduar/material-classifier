@@ -102,7 +102,7 @@
             <input
               v-model="form.matricula"
               type="text"
-              placeholder="Entre 8 y 10 dígitos"
+              placeholder="Numero de matrícula (opcional)"
               maxlength="10"
               :class="[
                 'bg-white/[.06] border rounded-lg text-white font-[Poppins] text-[.95rem] px-4 py-3 outline-none transition-all duration-200 placeholder:text-white/30',
@@ -214,16 +214,22 @@
             </p>
             <p class="text-sm text-white/65 leading-relaxed">
               Tu nombre y matrícula (en caso de proporcionarla) se usarán
-              únicamente para el reconocimiento de tu contribución al dataset.
+              únicamente para el reconocimiento de tu contribución al proyecto.
             </p>
             <p class="text-sm text-white/65 leading-relaxed">
               No compartiremos tu información personal con terceros. Las
               imágenes pasan a formar parte del dataset de entrenamiento de
-              acceso interno.
+              acceso interno, aunque en el futuro este dataset podría llegar a
+              ser de acceso público para investigación.
             </p>
             <p class="text-sm text-white/65 leading-relaxed">
               Puedes solicitar la eliminación de tus datos en cualquier momento
-              contactando al equipo RENOVA.
+              contactando al equipo RENOVA, al correo:
+              <a
+                href="mailto:soyrenovaapp@gmail.com"
+                class="text-[#05d16e] underline"
+                >soyrenovaapp@gmail.com</a
+              >
             </p>
           </div>
           <button
