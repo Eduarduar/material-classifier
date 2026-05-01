@@ -10,3 +10,6 @@ media_temp/
 dist/
 *.egg-info/
 images/*
+staticfiles/*
+node_modules/
+dist/

@@ -37,7 +37,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'staticfiles' / 'frontend'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -58,6 +58,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'staticfiles']
 
 # Media (temporary local storage before uploading to Drive)
 MEDIA_ROOT = BASE_DIR / 'media_temp'
