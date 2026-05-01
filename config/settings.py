@@ -85,4 +85,6 @@ MODEL_CLASSES = os.getenv('MODEL_CLASSES', '').split(',')  # e.g. "plastic,metal
 GOOGLE_DRIVE_CREDENTIALS_FILE = BASE_DIR / os.getenv(
     'GOOGLE_DRIVE_CREDENTIALS_FILE', 'credentials/service_account.json'
 )
-GOOGLE_DRIVE_FOLDER_ID = os.getenv('GOOGLE_DRIVE_FOLDER_ID', '')
+GOOGLE_OAUTH_TOKEN_FILE = BASE_DIR / os.getenv(
+    'GOOGLE_OAUTH_TOKEN_FILE', 'credentials/token.json'
+)

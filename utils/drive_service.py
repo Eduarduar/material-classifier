@@ -1,25 +1,26 @@
 """
-Sube imágenes a Google Drive usando una Service Account.
-Las carpetas destino están mapeadas directamente por su ID.
+Sube imágenes a Google Drive usando OAuth2 con cuenta personal.
 """
 import io
 import os
+import re
 from datetime import datetime
 
 from django.conf import settings
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
-# Mapa clase → ID de carpeta en Drive (fijo, sin búsquedas)
 CARPETAS_RECICLAJE = {
-    "crushed_metal":    "1yy4UT7kivg5Qt-1NJl7P9c_WIXbCrcQE",
-    "crushed_plastic":  "1MCb-XO5xb6Xe1V25AvEMtczk84bhFdDg",
-    "metal":            "1wYYdju6RC0jJ1MMN0tFoZ6vizx_OjzSD",
-    "no_reciclable":    "1i4k3jy05AVgYh0VyhHH1uf9z9aGZHPYX",
-    "plastic":          "1M6DdX5geeVsvms_B_j27X4zYyr83iIyZ"
+    "crushed_metal":   "1o5QQTB73Ku1FP6iWsVWt_eICs1JDbze_",
+    "crushed_plastic": "1HjanmadCQertoGm-dIi1Jgid8UEy86Ux",
+    "metal":           "10fzdmNTLTwjIFdu1ghUbcKejYYYlnByS",
+    "no_reciclable":   "1rbLriyCKJWBLJW4f-vqzTFDijDEOBqFh",
+    "plastic":         "1iGhD1qpPWo1VXOiQwXw__aAYObaS89QS",
 }
 
 _service = None
@@ -30,37 +31,64 @@ def _get_service():
     if _service:
         return _service
 
-    creds = service_account.Credentials.from_service_account_file(
-        str(settings.GOOGLE_DRIVE_CREDENTIALS_FILE),
-        scopes=SCOPES,
-    )
+    creds = None
+    token_path = str(settings.GOOGLE_OAUTH_TOKEN_FILE)
+    credentials_path = str(settings.GOOGLE_DRIVE_CREDENTIALS_FILE)
+
+    if os.path.exists(token_path):
+        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            with open(token_path, 'w') as f:
+                f.write(creds.to_json())
+        else:
+            raise RuntimeError(
+                "No hay token de OAuth. Ejecuta: python generate_token.py"
+            )
+
     _service = build('drive', 'v3', credentials=creds)
     return _service
 
 
-def upload_image_to_drive(image_file, predicted_class: str, human_label: str = '') -> str:
-    """
-    Sube la imagen a la carpeta de Drive correspondiente a la clase.
+def _sanitize(text: str) -> str:
+    """Elimina caracteres no permitidos en nombres de archivo."""
+    text = text.strip().lower()
+    text = re.sub(r'[^\w\-]', '_', text, flags=re.UNICODE)
+    text = re.sub(r'_+', '_', text)
+    return text
 
-    - Si se manda `human_label` (corrección manual), se usa esa clase.
-    - Si la clase no está en CARPETAS_RECICLAJE, lanza ValueError.
 
-    Retorna el ID del archivo subido en Drive.
+def upload_image_to_drive(
+    image_file,
+    predicted_class: str,
+    human_label: str = '',
+    nombre: str = '',
+    matricula: str = '',
+) -> str:
     """
-    folder_key = human_label.strip() or predicted_class
+    Sube la imagen a Drive con el nombre:
+      YYYYMMDD_HHMMSS_clase_nombre_matricula.ext
+
+    Retorna el ID del archivo subido.
+    """
+    folder_key = human_label or predicted_class
 
     if folder_key not in CARPETAS_RECICLAJE:
         raise ValueError(
-            f"Clase '{folder_key}' no tiene carpeta asignada. "
-            f"Clases válidas: {list(CARPETAS_RECICLAJE.keys())}"
+            f"Clase '{folder_key}' no válida. "
+            f"Opciones: {list(CARPETAS_RECICLAJE.keys())}"
         )
 
     folder_id = CARPETAS_RECICLAJE[folder_key]
     service = _get_service()
 
-    ts = datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')
-    ext = os.path.splitext(image_file.name)[-1] or '.jpg'
-    filename = f"{ts}_{folder_key}{ext}"
+    ts     = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    ext    = os.path.splitext(image_file.name)[-1] or '.jpg'
+    nombre_safe    = _sanitize(nombre)
+    suffix = f"_{matricula}" if matricula else ""
+    filename = f"{ts}_{folder_key}_{nombre_safe}{suffix}{ext}"
 
     image_file.seek(0)
     content = image_file.read()

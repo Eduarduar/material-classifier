@@ -10,21 +10,40 @@ from utils.drive_service import upload_image_to_drive
 class ClassifyView(APIView):
     """
     POST /api/classify/
-    Body (multipart): image=<file>, label=<str opcional para datos de entrenamiento>
+    Campos (multipart):
+      - image      : archivo de imagen (requerido)
+      - nombre     : nombre de la persona (requerido)
+      - matricula  : número de 8 a 10 dígitos (opcional)
+      - label      : clase manual (opcional, para corregir la predicción)
     """
     parser_classes = [MultiPartParser]
 
     def post(self, request):
         image_file = request.FILES.get('image')
-        label = request.data.get('label', '')
+        nombre    = request.data.get('nombre', '').strip()
+        matricula = request.data.get('matricula', '').strip()
+        label     = request.data.get('label', '').strip()
+
+        # Validaciones
+        errors = {}
 
         if not image_file:
-            return Response(
-                {'error': 'No se recibió ninguna imagen.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            errors['image'] = 'La imagen es requerida.'
 
-        # 1. Inferencia
+        if not nombre:
+            errors['nombre'] = 'El nombre es requerido.'
+
+        # Matrícula es opcional, pero si se manda debe ser válida
+        if matricula:
+            if not matricula.isdigit():
+                errors['matricula'] = 'La matrícula debe contener solo números.'
+            elif not (8 <= len(matricula) <= 10):
+                errors['matricula'] = 'La matrícula debe tener entre 8 y 10 dígitos.'
+
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Inferencia
         try:
             result = predict(image_file)
         except Exception as exc:
@@ -33,12 +52,14 @@ class ClassifyView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        # 2. Subir a Google Drive
+        # Subir a Drive
         try:
             drive_file_id = upload_image_to_drive(
                 image_file=image_file,
                 predicted_class=result['class'],
                 human_label=label,
+                nombre=nombre,
+                matricula=matricula,
             )
         except Exception as exc:
             drive_file_id = None
