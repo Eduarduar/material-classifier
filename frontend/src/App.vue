@@ -18,7 +18,11 @@
   >
     <Transition name="fade" mode="out-in">
       <WelcomePage v-if="step === 'welcome'" @next="step = 'form'" />
-      <UserForm v-else-if="step === 'form'" @next="onFormDone" />
+      <UserForm
+        v-else-if="step === 'form'"
+        @next="onFormDone"
+        @back="restart"
+      />
       <ImageUpload
         v-else-if="step === 'upload'"
         :user="user"

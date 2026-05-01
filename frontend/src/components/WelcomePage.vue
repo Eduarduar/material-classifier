@@ -5,7 +5,7 @@
     <div class="w-full max-w-md flex flex-col items-center gap-8">
       <!-- Logo -->
       <div class="flex flex-col items-center gap-3">
-        <div class="w-20 h-20">
+        <div class="w-20 h-20 relative">
           <svg
             viewBox="0 0 80 80"
             fill="none"
@@ -20,18 +20,20 @@
               stroke-dasharray="6 4"
               class="spin-slow"
             />
-            <path
-              d="M40 14 A26 26 0 0 1 62 52 L54 48 L58 62 L44 56 L52 52 A18 18 0 0 0 40 22 Z"
-              fill="#05d16e"
-            />
-            <path
-              d="M40 66 A26 26 0 0 1 18 28 L26 32 L22 18 L36 24 L28 28 A18 18 0 0 0 40 58 Z"
-              fill="#05d16e"
-              opacity=".7"
-            />
           </svg>
+
+          <!-- LOGO CENTRADO -->
+          <img
+            src="/images/logo.png"
+            alt="logo"
+            class="absolute inset-0 left-1 bottom-1 m-auto w-14 h-14 object-contain"
+          />
         </div>
-        <h1 class="text-5xl font-bold tracking-[.2em] text-white">RENOVA</h1>
+        <h1
+          class="text-5xl font-bold tracking-[.45em] text-white font-[stella]"
+        >
+          RENOVA
+        </h1>
       </div>
 
       <!-- Card -->
@@ -43,8 +45,8 @@
         </p>
         <p class="text-sm text-white/60 leading-relaxed mb-7">
           Sube imágenes de materiales y nuestro modelo de inteligencia
-          artificial los clasificará automáticamente. Tu participación mejora el
-          dataset y contribuye a un futuro más sostenible.
+          artificial los clasificará automáticamente. Tu participación nos ayuda
+          a mejorar y contribuye a un futuro más sostenible.
         </p>
 
         <!-- Stats -->

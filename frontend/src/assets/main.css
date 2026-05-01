@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+:root {
+  --font-stella: "stella", sans-serif;
+}
+
+@font-face {
+  font-family: "stella";
+  src:
+    url("/font/Stella Demo.otf") format("opentype"),
+    url("/font/Stella Demo.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
