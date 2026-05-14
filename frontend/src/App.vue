@@ -17,14 +17,20 @@
     "
   >
     <Transition name="fade" mode="out-in">
-      <WelcomePage v-if="step === 'welcome'" @next="step = 'form'" />
+      <WelcomePage
+        v-if="step === 'welcome'"
+        key="welcome"
+        @next="onWelcomeNext"
+      />
       <UserForm
         v-else-if="step === 'form'"
+        :key="formKey"
         @next="onFormDone"
         @back="restart"
       />
       <ImageUpload
         v-else-if="step === 'upload'"
+        key="upload"
         :user="user"
         @restart="restart"
       />
@@ -38,20 +44,29 @@ import WelcomePage from "./components/WelcomePage.vue";
 import UserForm from "./components/UserForm.vue";
 import ImageUpload from "./components/ImageUpload.vue";
 
+// Usamos ref simple, sin computed — más directo y sin riesgo de reactivity glitch
 const step = ref("welcome");
 const user = ref({});
+const formKey = ref(0);
+
+function onWelcomeNext() {
+  formKey.value += 1;
+  step.value = "form";
+}
 
 function onFormDone(userData) {
   user.value = userData;
   step.value = "upload";
 }
+
 function restart() {
   user.value = {};
+  formKey.value += 1;
   step.value = "welcome";
 }
 </script>
 
-<style>
+<style scoped>
 @import "tailwindcss";
 
 .fade-enter-active,

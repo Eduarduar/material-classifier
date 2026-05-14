@@ -23,17 +23,9 @@ CARPETAS_RECICLAJE = {
     "plastic":         "1iGhD1qpPWo1VXOiQwXw__aAYObaS89QS",
 }
 
-_service = None
-
-
 def _get_service():
-    global _service
-    if _service:
-        return _service
-
     creds = None
     token_path = str(settings.GOOGLE_OAUTH_TOKEN_FILE)
-    credentials_path = str(settings.GOOGLE_DRIVE_CREDENTIALS_FILE)
 
     if os.path.exists(token_path):
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)
@@ -45,11 +37,10 @@ def _get_service():
                 f.write(creds.to_json())
         else:
             raise RuntimeError(
-                "No hay token de OAuth. Ejecuta: python generate_token.py"
+                "Token inválido o inexistente. Ejecuta: python generate_token.py"
             )
 
-    _service = build('drive', 'v3', credentials=creds)
-    return _service
+    return build('drive', 'v3', credentials=creds)
 
 
 def _sanitize(text: str) -> str:
@@ -100,3 +91,77 @@ def upload_image_to_drive(
     ).execute()
 
     return uploaded['id']
+
+
+def move_and_relabel_image(file_id: str, new_class: str) -> str:
+    """
+    Mueve y renombra un archivo en Drive a la carpeta correspondiente a new_class.
+    Reemplaza la clase en el nombre del archivo.
+
+    Formato de nombre esperado:
+    YYYYMMDD_HHMMSS_clase_nombre_matricula.ext
+
+    Args:
+        file_id: ID del archivo en Drive
+        new_class: Nueva clase (debe estar en CARPETAS_RECICLAJE)
+
+    Returns:
+        El ID del archivo actualizado
+
+    Raises:
+        ValueError: Si new_class no es válida
+        Exception: Si el archivo no existe o hay error en Drive
+    """
+    if new_class not in CARPETAS_RECICLAJE:
+        raise ValueError(
+            f"Clase '{new_class}' no válida. "
+            f"Opciones: {list(CARPETAS_RECICLAJE.keys())}"
+        )
+
+    service = _get_service()
+    new_folder_id = CARPETAS_RECICLAJE[new_class]
+
+    # Obtener información actual del archivo
+    file_meta = service.files().get(
+        fileId=file_id,
+        fields='name, parents'
+    ).execute()
+
+    current_name = file_meta.get('name', '')
+    current_parents = file_meta.get('parents', [])
+
+    # Convertir parents actuales a string separado por comas
+    old_parents = ",".join(current_parents)
+
+    # Parsear nombre:
+    # YYYYMMDD_HHMMSS_clase_nombre_matricula.ext
+    name_without_ext, ext = os.path.splitext(current_name)
+
+    # máximo 4 partes:
+    # [YYYYMMDD, HHMMSS, clase, resto]
+    parts = name_without_ext.split('_', 3)
+
+    if len(parts) >= 3:
+        timestamp = f"{parts[0]}_{parts[1]}"
+        rest = parts[3] if len(parts) > 3 else ""
+
+        if rest:
+            new_name = f"{timestamp}_{new_class}_{rest}{ext}"
+        else:
+            new_name = f"{timestamp}_{new_class}{ext}"
+    else:
+        # fallback si el formato no coincide
+        new_name = current_name
+
+    # Actualizar nombre y mover carpeta correctamente
+    updated = service.files().update(
+        fileId=file_id,
+        addParents=new_folder_id,
+        removeParents=old_parents,
+        body={
+            'name': new_name
+        },
+        fields='id'
+    ).execute()
+
+    return updated['id']

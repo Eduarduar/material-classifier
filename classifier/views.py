@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.parsers import MultiPartParser
 
 from utils.model_loader import predict
-from utils.drive_service import upload_image_to_drive
+from utils.drive_service import upload_image_to_drive, move_and_relabel_image
 
 
 class ClassifyView(APIView):
@@ -78,3 +78,61 @@ class HealthView(APIView):
             'status': 'ok',
             'model_loaded': is_model_loaded(),
         })
+
+
+class CorrectClassificationView(APIView):
+    """
+    POST /api/correct/
+    Corrige la clasificación manual de una imagen ya cargada en Drive.
+    
+    Campos (JSON):
+      - id    : ID del archivo en Drive (requerido)
+      - type  : Nueva clase de clasificación (requerido)
+    """
+
+    def post(self, request):
+        file_id = request.data.get('id', '').strip()
+        new_class = request.data.get('type', '').strip()
+
+        # Validaciones
+        errors = {}
+
+        if not file_id:
+            errors['id'] = 'El ID del archivo es requerido.'
+
+        if not new_class:
+            errors['type'] = 'La clase de clasificación es requerida.'
+
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validar que la clase exista
+        from utils.drive_service import CARPETAS_RECICLAJE
+        if new_class not in CARPETAS_RECICLAJE:
+            return Response(
+                {'type': f'Clase inválida. Opciones: {list(CARPETAS_RECICLAJE.keys())}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Mover y renombrar el archivo en Drive
+        try:
+            updated_id = move_and_relabel_image(
+                file_id=file_id,
+                new_class=new_class,
+            )
+        except ValueError as exc:
+            return Response(
+                {'type': str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as exc:
+            return Response(
+                {'error': f'Error al corregir la clasificación: {str(exc)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response({
+            'success': True,
+            'message': f'Clasificación corregida a {new_class}',
+            'file_id': updated_id,
+        }, status=status.HTTP_200_OK)

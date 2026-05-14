@@ -18,7 +18,9 @@ flow = InstalledAppFlow.from_client_secrets_file(
     SCOPES
 )
 
-creds = flow.run_local_server(port=0)
+# access_type='offline' obtiene un refresh token que no expira
+# prompt='consent' fuerza la pantalla de consentimiento para asegurar offline access
+creds = flow.run_local_server(port=0, access_type='offline', prompt='consent')
 
 token_path = str(settings.GOOGLE_OAUTH_TOKEN_FILE)
 with open(token_path, 'w') as f:
