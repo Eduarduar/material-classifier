@@ -5,13 +5,14 @@ import io
 import os
 import re
 from datetime import datetime
+from pathlib import Path
 
 from django.conf import settings
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
@@ -28,17 +29,39 @@ def _get_service():
     token_path = str(settings.GOOGLE_OAUTH_TOKEN_FILE)
 
     if os.path.exists(token_path):
-        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+        try:
+            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+        except ValueError as exc:
+            raise RuntimeError(
+                "El archivo de token es inválido. Ejecuta: python generate_token.py"
+            ) from exc
 
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+    if not creds:
+        raise RuntimeError(
+            "Token inválido o inexistente. Ejecuta: python generate_token.py"
+        )
+
+    if creds.expired:
+        if creds.refresh_token:
+            try:
+                creds.refresh(Request())
+            except RefreshError as exc:
+                raise RuntimeError(
+                    "No se pudo refrescar el token. Ejecuta: python generate_token.py"
+                ) from exc
+
+            Path(token_path).parent.mkdir(parents=True, exist_ok=True)
             with open(token_path, 'w') as f:
                 f.write(creds.to_json())
         else:
             raise RuntimeError(
                 "Token inválido o inexistente. Ejecuta: python generate_token.py"
             )
+
+    if not creds.valid:
+        raise RuntimeError(
+            "Token inválido. Ejecuta: python generate_token.py"
+        )
 
     return build('drive', 'v3', credentials=creds)
 
