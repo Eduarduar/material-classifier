@@ -503,7 +503,7 @@ const emit = defineEmits(["next", "back"]);
 const tips = [
   {
     icon: "📏",
-    text: 'Cada imagen no debe superar <strong class="text-[#cdff10]">5 MB</strong>',
+    text: 'Cada imagen no debe superar <strong class="text-[#cdff10]">8 MB</strong>',
   },
   { icon: "💡", text: "Sube imágenes claras y bien iluminadas" },
   { icon: "🎯", text: "El material debe ser el objeto principal de la foto" },
