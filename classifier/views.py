@@ -81,10 +81,14 @@ class HealthView(APIView):
 
     def get(self, request):
         from utils.model_loader import is_model_loaded
+        from utils.drive_service import check_and_refresh_token
+        token_status = check_and_refresh_token()
+        all_ok = is_model_loaded() and token_status['valid']
         return Response({
-            'status': 'ok',
+            'status': 'ok' if all_ok else 'degraded',
             'model_loaded': is_model_loaded(),
-        })
+            'drive_token': token_status,
+        }, status=200)
 
 
 class CorrectClassificationView(APIView):

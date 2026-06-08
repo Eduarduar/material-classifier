@@ -66,6 +66,39 @@ def _get_service():
     return build('drive', 'v3', credentials=creds)
 
 
+def check_and_refresh_token() -> dict:
+    """
+    Verifica el token OAuth2 y lo refresca si está expirado.
+    Retorna {'valid': bool, 'refreshed': bool, 'error': str | None}
+    """
+    token_path = str(settings.GOOGLE_OAUTH_TOKEN_FILE)
+
+    if not os.path.exists(token_path):
+        return {'valid': False, 'refreshed': False, 'error': 'Token no encontrado. Ejecuta generate_token.py'}
+
+    try:
+        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+    except ValueError as exc:
+        return {'valid': False, 'refreshed': False, 'error': f'Token inválido: {exc}'}
+
+    if creds.valid:
+        return {'valid': True, 'refreshed': False, 'error': None}
+
+    if creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+            Path(token_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(token_path, 'w') as f:
+                f.write(creds.to_json())
+            if creds.valid:
+                return {'valid': True, 'refreshed': True, 'error': None}
+            return {'valid': False, 'refreshed': True, 'error': 'El token sigue inválido tras el refresco'}
+        except RefreshError as exc:
+            return {'valid': False, 'refreshed': False, 'error': f'No se pudo refrescar el token: {exc}'}
+
+    return {'valid': False, 'refreshed': False, 'error': 'Token expirado sin refresh_token. Sube un nuevo token via /api/upload-token/'}
+
+
 def _sanitize(text: str) -> str:
     """Elimina caracteres no permitidos en nombres de archivo."""
     text = text.strip().lower()
