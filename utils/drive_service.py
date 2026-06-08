@@ -41,13 +41,13 @@ def _get_service():
             "Token inválido o inexistente. Ejecuta: python generate_token.py"
         )
 
-    if creds.expired:
-        if creds.refresh_token:
+    if not creds.valid:
+        if creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
             except RefreshError as exc:
                 raise RuntimeError(
-                    "No se pudo refrescar el token. Ejecuta: python generate_token.py"
+                    "No se pudo refrescar el token. Sube un nuevo token.json via /api/upload-token/"
                 ) from exc
 
             Path(token_path).parent.mkdir(parents=True, exist_ok=True)
@@ -55,13 +55,13 @@ def _get_service():
                 f.write(creds.to_json())
         else:
             raise RuntimeError(
-                "Token inválido o inexistente. Ejecuta: python generate_token.py"
+                "Token inválido o expirado. Sube un nuevo token.json via /api/upload-token/"
             )
 
-    if not creds.valid:
-        raise RuntimeError(
-            "Token inválido. Ejecuta: python generate_token.py"
-        )
+        if not creds.valid:
+            raise RuntimeError(
+                "El token no es válido tras el refresco. Sube un nuevo token.json via /api/upload-token/"
+            )
 
     return build('drive', 'v3', credentials=creds)
 

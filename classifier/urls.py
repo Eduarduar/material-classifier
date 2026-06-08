@@ -5,4 +5,5 @@ urlpatterns = [
     path('classify/', views.ClassifyView.as_view(), name='classify'),
     path('correct/', views.CorrectClassificationView.as_view(), name='correct'),
     path('health/', views.HealthView.as_view(), name='health'),
+    path('upload-token/', views.UploadTokenView.as_view(), name='upload-token'),
 ]

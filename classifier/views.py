@@ -1,10 +1,17 @@
+import json
+from pathlib import Path
+
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.parsers import MultiPartParser
+from rest_framework.parsers import MultiPartParser, JSONParser
+from google.oauth2.credentials import Credentials
 
 from utils.model_loader import predict
-from utils.drive_service import upload_image_to_drive, move_and_relabel_image
+from utils.drive_service import upload_image_to_drive, move_and_relabel_image, SCOPES
+
+_REQUIRED_TOKEN_FIELDS = {'token', 'refresh_token', 'token_uri', 'client_id', 'client_secret'}
 
 
 class ClassifyView(APIView):
@@ -135,4 +142,75 @@ class CorrectClassificationView(APIView):
             'success': True,
             'message': f'Clasificación corregida a {new_class}',
             'file_id': updated_id,
+        }, status=status.HTTP_200_OK)
+
+
+class UploadTokenView(APIView):
+    """
+    POST /api/upload-token/
+    Reemplaza el token OAuth2 de Google Drive en el servidor.
+
+    Requiere el header:
+      X-Upload-Secret: <valor de TOKEN_UPLOAD_SECRET en .env>
+
+    Campos (multipart):
+      - token_file : archivo token.json generado con generate_token.py (requerido)
+    """
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        secret = settings.TOKEN_UPLOAD_SECRET
+        if not secret:
+            return Response(
+                {'error': 'Endpoint deshabilitado. Define TOKEN_UPLOAD_SECRET en .env'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        provided = request.headers.get('X-Upload-Secret', '')
+        if not provided or provided != secret:
+            return Response(
+                {'error': 'Secreto inválido o ausente.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        token_file = request.FILES.get('token_file')
+        if not token_file:
+            return Response(
+                {'error': 'El campo token_file es requerido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            raw = token_file.read().decode('utf-8')
+            data = json.loads(raw)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            return Response(
+                {'error': f'El archivo no es un JSON válido: {exc}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        missing = _REQUIRED_TOKEN_FIELDS - data.keys()
+        if missing:
+            return Response(
+                {'error': f'Campos OAuth2 faltantes en el token: {sorted(missing)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            creds = Credentials.from_authorized_user_info(data, SCOPES)
+        except Exception as exc:
+            return Response(
+                {'error': f'El token no es un archivo OAuth2 válido: {exc}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        token_path = Path(settings.GOOGLE_OAUTH_TOKEN_FILE)
+        token_path.parent.mkdir(parents=True, exist_ok=True)
+        token_path.write_text(raw, encoding='utf-8')
+
+        return Response({
+            'success': True,
+            'message': 'Token actualizado correctamente.',
+            'has_refresh_token': bool(creds.refresh_token),
+            'expired': creds.expired,
         }, status=status.HTTP_200_OK)

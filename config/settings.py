@@ -89,3 +89,6 @@ GOOGLE_DRIVE_CREDENTIALS_FILE = BASE_DIR / os.getenv(
 GOOGLE_OAUTH_TOKEN_FILE = BASE_DIR / os.getenv(
     'GOOGLE_OAUTH_TOKEN_FILE', 'credentials/token.json'
 )
+
+# Clave para el endpoint de subida de token. Sin valor = endpoint deshabilitado.
+TOKEN_UPLOAD_SECRET = os.getenv('TOKEN_UPLOAD_SECRET', '')
