@@ -13,3 +13,8 @@ images/*
 staticfiles/*
 node_modules/
 dist/
+
+# Claude Code
+.claude/
+CLAUDE.md
+graphify-out/
